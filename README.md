@@ -58,7 +58,7 @@ Compila `.env`:
 DISCORD_TOKEN=        # token bot da Discord Developer Portal
 GEMINI_API_KEY=       # chiave API da aistudio.google.com
 SUPABASE_URL=         # URL progetto Supabase
-SUPABASE_ANON_KEY=    # chiave anon Supabase
+SUPABASE_KEY=    # chiave anon Supabase
 ```
 
 ### 3. Avvia il bot
