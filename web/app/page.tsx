@@ -1,6 +1,6 @@
 "use client";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import ScrollReveal from "@/components/ScrollReveal";
 import AnimatedCounter from "@/components/AnimatedCounter";
 
@@ -27,7 +27,7 @@ const commands = [
   { name: "/giveaway", desc: "Avvia giveaway con premi e timer", badge: null },
 ];
 
-const stats = [
+const DEFAULT_STATS = [
   { value: 500, suffix: "+", label: "server_attivi" },
   { value: 10000, suffix: "+", label: "canali_creati" },
   { value: 99, suffix: "%", label: "uptime" },
@@ -40,8 +40,8 @@ const steps = [
   { n: "03", cmd: "$ applica", title: "Applicato in secondi", body: "La struttura viene creata direttamente sul tuo server Discord. Zero configurazione manuale." },
 ];
 
-const terminalLines = [
-  { prompt: true, text: "discord-architect /build --describe" },
+const TERMINAL_LINES = [
+  { prompt: true, text: "discord-architect /build --describe", color: "var(--text)" },
   { prompt: false, text: '> "server gaming con FPS, RPG e community"', color: "var(--text2)" },
   { prompt: false, text: "✓  struttura analizzata", color: "var(--accent)" },
   { prompt: false, text: "✓  categoria GAMING creata", color: "var(--accent)" },
@@ -63,6 +63,50 @@ export default function Home() {
   const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
   const [activeSection, setActiveSection] = useState("");
+  const [stats, setStats] = useState(DEFAULT_STATS);
+
+  // Typewriter state
+  const [twLine, setTwLine] = useState(0);
+  const [twChar, setTwChar] = useState(0);
+  const [twDone, setTwDone] = useState(false);
+
+  // Fetch real stats
+  useEffect(() => {
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((data) => {
+        setStats([
+          { value: data.servers, suffix: "+", label: "server_attivi" },
+          { value: data.tickets, suffix: "+", label: "canali_creati" },
+          { value: data.uptime, suffix: "%", label: "uptime" },
+          { value: data.commands, suffix: "", label: "slash_commands" },
+        ]);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Typewriter effect
+  const advanceTypewriter = useCallback(() => {
+    const line = TERMINAL_LINES[twLine];
+    if (!line) { setTwDone(true); return; }
+    if (twChar < line.text.length) {
+      setTwChar((c) => c + 1);
+    } else {
+      if (twLine < TERMINAL_LINES.length - 1) {
+        setTwLine((l) => l + 1);
+        setTwChar(0);
+      } else {
+        setTwDone(true);
+      }
+    }
+  }, [twLine, twChar]);
+
+  useEffect(() => {
+    if (twDone) return;
+    const delay = twChar === 0 ? 300 : TERMINAL_LINES[twLine]?.prompt ? 40 : 18;
+    const t = setTimeout(advanceTypewriter, delay);
+    return () => clearTimeout(t);
+  }, [twLine, twChar, twDone, advanceTypewriter]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -240,22 +284,29 @@ export default function Home() {
                   <span style={{ color: "var(--text3)", fontSize: "0.7rem", marginLeft: "8px" }}>bash — discord-architect</span>
                 </div>
                 <div style={{ padding: "24px 24px 28px" }}>
-                  {terminalLines.map((line, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.9 + i * 0.18 }}
-                      style={{ display: "flex", gap: "12px", marginBottom: "8px", fontSize: "0.8rem", lineHeight: 1.6 }}
-                    >
-                      <span style={{ color: line.prompt ? "var(--accent)" : "transparent", flexShrink: 0 }}>❯</span>
-                      <span style={{ color: line.prompt ? "var(--text)" : line.color }}>{line.text}</span>
-                    </motion.div>
-                  ))}
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.1 }} style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
-                    <span style={{ color: "var(--accent)", fontSize: "0.8rem" }}>❯</span>
-                    <span className="cursor-blink" />
-                  </motion.div>
+                  {TERMINAL_LINES.map((line, i) => {
+                    if (i > twLine) return null;
+                    const isCurrentLine = i === twLine;
+                    const displayText = isCurrentLine ? line.text.slice(0, twChar) : line.text;
+                    return (
+                      <div
+                        key={i}
+                        style={{ display: "flex", gap: "12px", marginBottom: "8px", fontSize: "0.8rem", lineHeight: 1.6 }}
+                      >
+                        <span style={{ color: line.prompt ? "var(--accent)" : "transparent", flexShrink: 0 }}>❯</span>
+                        <span style={{ color: line.color }}>
+                          {displayText}
+                          {isCurrentLine && !twDone && <span className="cursor-blink" />}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {twDone && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
+                      <span style={{ color: "var(--accent)", fontSize: "0.8rem" }}>❯</span>
+                      <span className="cursor-blink" />
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>
