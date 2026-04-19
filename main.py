@@ -9,6 +9,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname
 COGS = [
     "cogs.ai_builder",
     "cogs.tickets",
+    "cogs.setup",
+    "cogs.stats",
 ]
 
 intents = discord.Intents.default()
